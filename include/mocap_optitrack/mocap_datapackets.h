@@ -47,6 +47,9 @@
 
 using namespace std;
 
+// #define MAX_ANALOG_CHANNELS         32      // maximum number of data channels (signals) per analog/force plate device
+// #define MAX_ANALOG_SUBFRAMES        30      // maximum number of analog/force plate frames per mocap frame
+
 /// \brief Data object holding the position of a single mocap marker in 3d space
 class Marker
 {
@@ -55,6 +58,23 @@ class Marker
     float positionY;
     float positionZ;
 };
+
+// // Labeled markers
+// class LabelMarker
+// {
+//   public:
+//     int ID;                           // Unique identifier:
+//
+//     struct __attribute__ ((__packed__)) {
+//       float x;                    // x position
+//       float y;                    // y position
+//       float z;                    // z position
+//     } position;
+//
+//     float markSize;                     // marker size
+//     int16_t params;                     // host defined parameters
+//     float residual;                     // marker error residual, in mm/ray
+// };
 
 class Pose
 {
@@ -90,6 +110,19 @@ class RigidBody
     bool has_data();
 };
 
+// /// \brief Data object holding information about a mocap skeleton
+// class SkeletonData
+// {
+//   public:
+//     SkeletonData();
+//     ~SkeletonData();
+//
+//     int ID;
+//
+//     int numRigidBodies;
+//     RigidBody *rigidBodies;
+// };
+
 /// \brief Data object describing a single tracked model
 class ModelDescription
 {
@@ -112,6 +145,42 @@ class MarkerSet
     Marker *markers;
 };
 
+// // MarkerSet Definition
+// class MarkerSetDescription
+// {
+//   public:
+//     char name[256];            // MarkerSet name
+//     int nMarkers;                       // # of markers in MarkerSet
+//     char** szMarkerNames;                   // array of marker names
+// };
+
+
+// class AnalogChannelData
+// {
+//   public:
+//     int nFrames;                            // # of analog frames of data in this channel data packet
+//     float fValues[MAX_ANALOG_SUBFRAMES];     // values
+// };
+//
+// // force plates
+// class ForcePlateData
+// {
+//   public:
+//     int ID;                                         // ForcePlate ID (from data description)
+//     int nChannels;                                  // # of channels (signals) for this force plate
+//     AnalogChannelData channelsData[MAX_ANALOG_CHANNELS];// Channel (signal) data (e.g. Fx[], Fy[], Fz[])
+//     int16_t params;                                     // Host defined flags
+// };
+//
+// class DeviceData
+// {
+//   public:
+//     int ID;                                         // Device ID (from data description)
+//     int nChannels;                                  // # of active channels (signals) for this device
+//     AnalogChannelData channelsData[MAX_ANALOG_CHANNELS];// Channel (signal) data (e.g. ai0, ai1, ai2)
+//     int16_t params;                                     // Host defined flags
+// };
+
 /// \brief Data object holding poses of a tracked model's components
 class ModelFrame
 {
@@ -122,12 +191,28 @@ class ModelFrame
     MarkerSet *markerSets;
     Marker *otherMarkers;
     RigidBody *rigidBodies;
+    // SkeletonData *skeletons;
+    // LabelMarker *labelMarkers;
+    // ForcePlateData *forcePlates;
+    // DeviceData *devices;
 
     int numMarkerSets;
     int numOtherMarkers;
     int numRigidBodies;
+    // int numSkeletons;
+    // int numLabelMarkers;
+    // int numForcePlates;
+    // int numDevices;
 
-    float latency;
+    // unsigned int timeCode;                              // SMPTE timecode (if available)
+    // unsigned int timeCodeSubframe;                      // timecode sub-frame data
+    // double fTimestamp;                              // timestamp since software start ( software timestamp )
+    // uint64_t cameraMidExposureTimestamp;            // Given in host's high resolution ticks
+    // uint64_t cameraDataReceivedTimestamp;           // Given in host's high resolution ticks
+    // uint64_t transmitTimestamp;                     // Given in host's high resolution ticks
+    // int16_t params;                                     // host defined parameters
+    //
+    // int latency;
 };
 
 /// \breif Version class containing the version information and helpers for comparison.
@@ -142,6 +227,7 @@ class Version
     void setVersion(int major, int minor, int revision, int build);
     const std::string& getVersionString();
     bool operator > (const Version& comparison);
+    bool operator < (const Version& comparison);
     bool operator == (const Version& comparison);
 
     int v_major;
@@ -159,7 +245,7 @@ class MoCapDataFormat
     MoCapDataFormat(const char *packet, unsigned short length);
     ~MoCapDataFormat();
 
-    /// \brief Parses a NatNet data frame packet as it is streamed by the Arena software according to the descriptions in the NatNet SDK v1.4
+    /// \brief Parses a NatNet data frame packet as it is streamed by the Arena software according to the descriptions in the NatNet SDK v1.4. Should support up to 3.0 now
     void parse ();
 
     void setVersion(int nver[4], int sver[4])
