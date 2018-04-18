@@ -8,7 +8,7 @@
 using namespace std;
 
 RigidBody::RigidBody()
-  : NumberOfMarkers(0), marker(0)
+  : NumberOfMarkers(0), ID(0), marker(0)
 {
 }
 
@@ -242,31 +242,31 @@ void MoCapDataFormat::parse()
         model.rigidBodies[m].pose.orientation.z,
         model.rigidBodies[m].pose.orientation.w);
 
-    // After Version 3.0 Marker data is in desription
-    if (NatNetVersion < Version("3.0"))
-    {
-      // get number of markers per rigid body
-      read_and_seek(model.rigidBodies[m].NumberOfMarkers);
-
-      ROS_DEBUG("Number of rigid body markers: %d", model.rigidBodies[m].NumberOfMarkers);
-
-      if (model.rigidBodies[m].NumberOfMarkers > 0)
-      {
-        model.rigidBodies[m].marker = new Marker [model.rigidBodies[m].NumberOfMarkers];
-
-        size_t byte_count = model.rigidBodies[m].NumberOfMarkers * sizeof(Marker);
-        memcpy(model.rigidBodies[m].marker, packet, byte_count);
-        seek(byte_count);
-
-        // skip marker IDs
-        byte_count = model.rigidBodies[m].NumberOfMarkers * sizeof(int);
-        seek(byte_count);
-
-        // skip marker sizes
-        byte_count = model.rigidBodies[m].NumberOfMarkers * sizeof(float);
-        seek(byte_count);
-      }
-    }
+//    // After Version 3.0 Marker data is in desription
+//    if (NatNetVersion < Version("3.0"))
+//    {
+//      // get number of markers per rigid body
+//      read_and_seek(model.rigidBodies[m].NumberOfMarkers);
+//
+//      ROS_DEBUG("Number of rigid body markers: %d", model.rigidBodies[m].NumberOfMarkers);
+//
+//      if (model.rigidBodies[m].NumberOfMarkers > 0)
+//      {
+//        model.rigidBodies[m].marker = new Marker [model.rigidBodies[m].NumberOfMarkers];
+//
+//        size_t byte_count = model.rigidBodies[m].NumberOfMarkers * sizeof(Marker);
+//        memcpy(model.rigidBodies[m].marker, packet, byte_count);
+//        seek(byte_count);
+//
+//        // skip marker IDs
+//        byte_count = model.rigidBodies[m].NumberOfMarkers * sizeof(int);
+//        seek(byte_count);
+//
+//        // skip marker sizes
+//        byte_count = model.rigidBodies[m].NumberOfMarkers * sizeof(float);
+//        seek(byte_count);
+//      }
+//    }
 
     // Skip padding inserted by the server
     seek(sizeof(int));

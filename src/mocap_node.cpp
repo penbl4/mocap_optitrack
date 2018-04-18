@@ -21,6 +21,7 @@
 // System includes
 #include <string>
 #include <unistd.h>
+#include <fstream>
 ////////////////////////////////////////////////////////////////////////
 // Constants
 
@@ -33,8 +34,8 @@ const std::string RIGID_BODIES_KEY = "rigid_bodies";
 const char ** DEFAULT_MOCAP_MODEL = OBJECT;
 //const char ** DEFAULT_MOCAP_MODEL = SKELETON_WITHOUT_TOES;
 
-const int COMMAND_PORT = 1510;
-const int LOCAL_PORT = 1511;
+#define COMMAND_PORT 				1510
+#define LOCAL_PORT 					1511
 
 // NATNET message ids
 #define NAT_PING                    0
@@ -47,34 +48,47 @@ const int LOCAL_PORT = 1511;
 #define NAT_FRAMEOFDATA             7
 #define NAT_MESSAGESTRING           8
 #define NAT_UNRECOGNIZED_REQUEST    100
+
 #define UNDEFINED                   999999.9999
 #define MAX_PACKETSIZE              100000  // max size of packet (actual packet size is dynamic)
 #define MAX_NAMELENGTH              256
 
+#pragma pack(push, 1)
 // sender
+
 typedef struct
 {
     char szName[MAX_NAMELENGTH];            // sending app's name
-    unsigned char Version[4];               // sending app's version [major.minor.build.revision]
-    unsigned char NatNetVersion[4];         // sending app's NatNet version [major.minor.build.revision]
-
+    uint8_t Version[4];               // sending app's version [major.minor.build.revision]
+    uint8_t NatNetVersion[4];         // sending app's NatNet version [major.minor.build.revision]
 } sSender;
 
 typedef struct
 {
-    unsigned short iMessage;                // message ID (e.g. NAT_FRAMEOFDATA)
-    unsigned short nDataBytes;              // Num bytes in payload
+    sSender Common;
+
+    uint64_t HighResClockFrequency;         // host's high resolution clock frequency (ticks per second)
+    uint16_t DataPort;
+    bool IsMulticast;
+    uint8_t MulticastGroupAddress[4];
+} sSender_Server;
+
+typedef struct
+{
+	uint16_t iMessage;                // message ID (e.g. NAT_FRAMEOFDATA)
+	uint16_t nDataBytes;              // Num bytes in payload
     union
     {
-        unsigned char  cData[MAX_PACKETSIZE];
+		uint8_t		   cData[MAX_PACKETSIZE];
         char           szData[MAX_PACKETSIZE];
-        unsigned long  lData[MAX_PACKETSIZE/4];
-        float          fData[MAX_PACKETSIZE/4];
+        uint32_t  	   lData[MAX_PACKETSIZE/sizeof(uint32_t)];
+        float          fData[MAX_PACKETSIZE/sizeof(float)];
         sSender        Sender;
+        sSender_Server SenderServer;
     } Data;                                 // Payload
-
 } sPacket;
 
+#pragma pack(pop)
 ////////////////////////////////////////////////////////////////////////
 
 void processMocapData( const char** mocap_model,
@@ -122,7 +136,7 @@ void processMocapData( const char** mocap_model,
 
 
         // Look for the beginning of a NatNet package
-        if (header == NAT_FRAMEOFDATA && version)
+        if (header == NAT_FRAMEOFDATA && version && 0==1)
         {
           payload_len = *((unsigned short*) &buffer[2]);  // 2-bytes.
           MoCapDataFormat format(buffer, payload_len);
@@ -149,6 +163,34 @@ void processMocapData( const char** mocap_model,
         if (header == NAT_PINGRESPONSE) {
           ROS_DEBUG("Header : %d, %d", header, PacketIn.iMessage);
           ROS_DEBUG("nData : %d", PacketIn.nDataBytes);
+
+          ofstream myFile;
+          myFile.open ("~/testData.txt", ios::out | ios::binary);
+          myFile.write (buffer, numBytes);
+          myFile.close();
+
+//        myFile2.open ("~/testData2.txt", ios::out | ios::binary | ios::app);
+//        myFile2.write ((char*)&PacketIn, sizeof(PacketIn));
+//        myFile2.write ((char*)&PacketIn.iMessage, sizeof(PacketIn.iMessage));
+//        myFile2.write ((char*)&tempInt, sizeof(int));
+//        myFile2.write ((char*)&PacketIn.nDataBytes, sizeof(PacketIn.nDataBytes));
+//        myFile2.write ((char*)&tempInt, sizeof(int));
+//        myFile2.write ((char*)&PacketIn.Data.Sender.NatNetVersion, sizeof(PacketIn.Data.Sender.NatNetVersion));
+//        myFile2.write ((char*)&tempInt, sizeof(int));
+//        myFile2.write ((char*)&PacketIn.Data.Sender.Version, sizeof(PacketIn.Data.Sender.Version));
+//        myFile2.write ((char*)&tempInt, sizeof(int));
+//        myFile2.write ((char*)&PacketIn.Data.Sender, sizeof(PacketIn.Data.Sender));
+//        myFile2.write ((char*)&tempInt, sizeof(int));
+//        myFile2.close();
+//        ROS_DEBUG("Header : %d, %d", header, PacketIn.iMessage);
+//        ROS_DEBUG("nData : %d", PacketIn.nDataBytes);
+//        ROS_DEBUG("numBytes : %d", numBytes);
+//        ROS_DEBUG("packet : %s", buffer);
+//        ROS_DEBUG("cData : %s", PacketIn.Data.cData);
+//        ROS_DEBUG("szData : %s", PacketIn.Data.szData);
+//        ROS_DEBUG("nData : %d", PacketIn.nDataBytes);
+//        ROS_DEBUG("lData : %s", PacketIn.Data.lData);
+
 
           for(int i=0;i<4;++i) {
             nver[i] = (int)PacketIn.Data.Sender.NatNetVersion[i];
@@ -231,6 +273,7 @@ int main( int argc, char* argv[] )
       }
   }
 
+  ROS_DEBUG("Multicast Group: %s", multicast_ip.c_str());
   // Process mocap data until SIGINT
   processMocapData(mocap_model, published_rigid_bodies, multicast_ip);
 
