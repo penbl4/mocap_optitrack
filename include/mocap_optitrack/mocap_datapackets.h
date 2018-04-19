@@ -78,16 +78,35 @@ public:
 class RigidBody {
 public:
   RigidBody() :
-      ID(0) {
+      ID(0), params(0) {
   }
   ~RigidBody() {
   }
 
   uint32_t ID;
   Pose pose;
+  int16_t params;                         // Host defined tracking flags
 
   const geometry_msgs::PoseStamped get_ros_pose(bool newCoordinates);
   bool has_data();
+};
+
+/// \brief Data object holding information about a mocap skeleton
+class SkeletonData {
+public:
+//     SkeletonData();
+//     ~SkeletonData();
+  SkeletonData() :
+    ID(0), numRigidBodies(0), rigidBodies(0) {
+  }
+  ~SkeletonData() {
+    delete[] rigidBodies;
+  }
+
+  uint32_t ID;
+
+  uint32_t numRigidBodies;
+  RigidBody *rigidBodies;
 };
 
 /// \brief Data object describing a single tracked model
@@ -123,19 +142,20 @@ public:
 class ModelFrame {
 public:
   ModelFrame() :
-      markerSets(0), otherMarkers(0), rigidBodies(0), numMarkerSets(0), numOtherMarkers(
-	  0), numRigidBodies(0) {
+      markerSets(0), otherMarkers(0), rigidBodies(0), skeletons(0),
+      numMarkerSets(0), numOtherMarkers(0), numRigidBodies(0), numSkeletons(0) {
   }
   ~ModelFrame() {
     delete[] markerSets;
     delete[] otherMarkers;
     delete[] rigidBodies;
+    delete[] skeletons;
   }
 
   MarkerSet *markerSets;
   Marker *otherMarkers;
   RigidBody *rigidBodies;
-  // SkeletonData *skeletons;
+  SkeletonData *skeletons;
   // LabelMarker *labelMarkers;
   // ForcePlateData *forcePlates;
   // DeviceData *devices;
@@ -143,7 +163,7 @@ public:
   uint32_t numMarkerSets;
   uint32_t numOtherMarkers;
   uint32_t numRigidBodies;
-  // int numSkeletons;
+  uint32_t numSkeletons;
   // int numLabelMarkers;
   // int numForcePlates;
   // int numDevices;
@@ -207,18 +227,6 @@ private:
 //     float residual;                     // marker error residual, in mm/ray
 // };
 
-// /// \brief Data object holding information about a mocap skeleton
-// class SkeletonData
-// {
-//   public:
-//     SkeletonData();
-//     ~SkeletonData();
-//
-//     int ID;
-//
-//     int numRigidBodies;
-//     RigidBody *rigidBodies;
-// };
 // // MarkerSet Definition
 // class MarkerSetDescription
 // {

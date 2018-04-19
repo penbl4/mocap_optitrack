@@ -129,82 +129,60 @@ void MoCapDataFormat::parse() {
 //    seek(sizeof(int32_t)); // 4 bytes
 
     // skip mean marker error, version > 2.0
-    seek(sizeof(float)); // 4 bytes
-
+    if (nnVer.major >= 2) {
+      seek(sizeof(float)); // 4 bytes
+    }
     // skip params, version > 2.6
-    if (nnVer.major > 2 && nnVer.minor > 6) {
+    if ( ((nnVer.major == 2) && (nnVer.minor >= 6)) || (nnVer.major > 2) ) {
       seek(sizeof(uint16_t)); // 2 bytes
     }
   }
 
-  // // skeletons, version 2.1 and later
-  // read_and_seek(model.numSkeletons);
-  // model.skeletons = new SkeletonData[model.numSkeletons];
-  // ROS_DEBUG("Number of skeletons: %d", model.numSkeletons);
-  //
-  // for (int i = 0; i < model.numSkeletons; i++)
-  // {
-  //   read_and_seek(model.skeletons[i].ID);
-  //   read_and_seek(model.skeletons[i].numRigidBodies);
-  //
-  //   ROS_DEBUG("Number of rigid bodies in skeleton #%d is %d", model.numSkeletons, model.skeletons[i].numRigidBodies);
-  //
-  //   model.skeletons[i].rigidBodies = new RigidBody[model.skeletons[i].numRigidBodies];
-  //   for (int m = 0; m < model.skeletons[i].numRigidBodies; m++)
-  //   {
-  //     // read id, position and orientation of each rigid body
-  //     read_and_seek(model.skeletons[i].rigidBodies[m].ID);
-  //     read_and_seek(model.skeletons[i].rigidBodies[m].pose);
-  //
-  //     ROS_DEBUG("Rigid body ID: %d", model.skeletons[i].rigidBodies[m].ID);
-  //     ROS_DEBUG("pos: [%3.2f,%3.2f,%3.2f], ori: [%3.2f,%3.2f,%3.2f,%3.2f]",
-  //         model.skeletons[i].rigidBodies[m].pose.position.x,
-  //         model.skeletons[i].rigidBodies[m].pose.position.y,
-  //         model.skeletons[i].rigidBodies[m].pose.position.z,
-  //         model.skeletons[i].rigidBodies[m].pose.orientation.x,
-  //         model.skeletons[i].rigidBodies[m].pose.orientation.y,
-  //         model.skeletons[i].rigidBodies[m].pose.orientation.z,
-  //         model.skeletons[i].rigidBodies[m].pose.orientation.w);
-  //
-  //     // After Version 3.0 Marker data is in desription
-  //     if (NatNetVersion < Version("3.0"))
-  //     {
-  //       // get number of markers per rigid body
-  //       read_and_seek(model.skeletons[i].rigidBodies[m].NumberOfMarkers);
-  //
-  //       ROS_DEBUG("Number of rigid body markers: %d", model.skeletons[i].rigidBodies[m].NumberOfMarkers);
-  //
-  //       if (model.skeletons[i].rigidBodies[m].NumberOfMarkers > 0)
-  //       {
-  //         model.skeletons[i].rigidBodies[m].marker = new Marker [model.skeletons[i].rigidBodies[m].NumberOfMarkers];
-  //
-  //         size_t byte_count = model.skeletons[i].rigidBodies[m].NumberOfMarkers * sizeof(Marker);
-  //         memcpy(model.skeletons[i].rigidBodies[m].marker, packet, byte_count);
-  //         seek(byte_count);
-  //
-  //         // skip marker IDs
-  //         byte_count = model.skeletons[i].rigidBodies[m].NumberOfMarkers * sizeof(int);
-  //         seek(byte_count);
-  //
-  //         // skip marker sizes
-  //         byte_count = model.skeletons[i].rigidBodies[m].NumberOfMarkers * sizeof(float);
-  //         seek(byte_count);
-  //       }
-  //     }
-  //
-  //     // Skip padding inserted by the server
-  //     seek(sizeof(int));
-  //
-  //     // skip mean marker error, version > 2.0
-  //     seek(sizeof(float));
-  //
-  //     // 2.6 or later.
-  //     if (NatNetVersion > Version("2.6"))
-  //     {
-  //       seek(sizeof(short));
-  //     }
-  //   }
-  // }
+  // skeletons, version 2.1 and later
+  if (((nnVer.major == 2) && (nnVer.minor >= 1)) || (nnVer.major > 2)) {
+    read_and_seek(model.numSkeletons); // 4 bytes
+    ROS_DEBUG("Number of skeletons: %d", model.numSkeletons);
+
+    model.skeletons = new SkeletonData[model.numSkeletons];
+    for (int i = 0; i < model.numSkeletons; i++) {
+      read_and_seek(model.skeletons[i].ID); // 4 bytes
+      read_and_seek(model.skeletons[i].numRigidBodies); // 4 bytes
+
+      ROS_DEBUG("Number of rigid bodies in skeleton #%d is %d", model.numSkeletons,
+	  model.skeletons[i].numRigidBodies);
+
+      model.skeletons[i].rigidBodies = new RigidBody[model.skeletons[i].numRigidBodies];
+      for (int m = 0; m < model.skeletons[i].numRigidBodies; m++) {
+	// read id, position and orientation of each rigid body
+	read_and_seek(model.skeletons[i].rigidBodies[m].ID); // 4 bytes
+	read_and_seek(model.skeletons[i].rigidBodies[m].pose); // 28 bytes
+
+	ROS_DEBUG("Rigid body ID: %d", model.skeletons[i].rigidBodies[m].ID);
+	ROS_DEBUG("pos: [%3.2f,%3.2f,%3.2f], ori: [%3.2f,%3.2f,%3.2f,%3.2f]",
+	    model.skeletons[i].rigidBodies[m].pose.position.x,
+	    model.skeletons[i].rigidBodies[m].pose.position.y,
+	    model.skeletons[i].rigidBodies[m].pose.position.z,
+	    model.skeletons[i].rigidBodies[m].pose.orientation.x,
+	    model.skeletons[i].rigidBodies[m].pose.orientation.y,
+	    model.skeletons[i].rigidBodies[m].pose.orientation.z,
+	    model.skeletons[i].rigidBodies[m].pose.orientation.w);
+
+	//    // Skip padding inserted by the server
+	//    seek(sizeof(int32_t)); // 4 bytes
+
+	// skip mean marker error, version > 2.0
+	if (nnVer.major >= 2) {
+	  seek(sizeof(float)); // 4 bytes
+	}
+	// skip params, version > 2.6
+	if (((nnVer.major == 2) && (nnVer.minor >= 6)) || (nnVer.major > 2)) {
+	  seek(sizeof(uint16_t)); // 2 bytes
+	}
+      }
+    }
+  }
+
+
   //
   // // Labeled markers, for version 2.3 and later
   // read_and_seek(model.numLabelMarkers);
