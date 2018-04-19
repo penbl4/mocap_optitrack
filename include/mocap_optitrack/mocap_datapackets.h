@@ -36,7 +36,6 @@
  */
 
 /// \author <a href="mailto:graeve@ais.uni-bonn.de">Kathrin Gräve</a>
-
 #ifndef __MOCAP_DATAPACKETS_H__
 #define __MOCAP_DATAPACKETS_H__
 
@@ -50,14 +49,146 @@ using namespace std;
 // #define MAX_ANALOG_CHANNELS         32      // maximum number of data channels (signals) per analog/force plate device
 // #define MAX_ANALOG_SUBFRAMES        30      // maximum number of analog/force plate frames per mocap frame
 
+#pragma pack(push, 1)
 /// \brief Data object holding the position of a single mocap marker in 3d space
-class Marker
-{
-  public:
-    float positionX;
-    float positionY;
-    float positionZ;
+class Marker {
+public:
+  float positionX;
+  float positionY;
+  float positionZ;
 };
+
+class Pose {
+public:
+  struct {
+    float x;
+    float y;
+    float z;
+  } position;
+  struct {
+    float x;
+    float y;
+    float z;
+    float w;
+  } orientation;
+};
+#pragma pack(pop)
+
+/// \brief Data object holding information about a single rigid body within a mocap skeleton
+class RigidBody {
+public:
+  RigidBody() :
+      ID(0) {
+  }
+  ~RigidBody() {
+  }
+
+  uint32_t ID;
+  Pose pose;
+
+  const geometry_msgs::PoseStamped get_ros_pose(bool newCoordinates);
+  bool has_data();
+};
+
+/// \brief Data object describing a single tracked model
+class ModelDescription {
+public:
+  ModelDescription() :
+    numMarkers(0), markerNames(0) {
+  }
+  ~ModelDescription() {
+    delete[] markerNames;
+  }
+
+  string name;
+  uint32_t numMarkers;
+  string *markerNames;
+};
+
+class MarkerSet {
+public:
+  MarkerSet() :
+      numMarkers(0), markers(0) {
+  }
+  ~MarkerSet() {
+    delete[] markers;
+  }
+
+  char szName[256];
+  uint32_t numMarkers;
+  Marker *markers;
+};
+
+/// \brief Data object holding poses of a tracked model's components
+class ModelFrame {
+public:
+  ModelFrame() :
+      markerSets(0), otherMarkers(0), rigidBodies(0), numMarkerSets(0), numOtherMarkers(
+	  0), numRigidBodies(0) {
+  }
+  ~ModelFrame() {
+    delete[] markerSets;
+    delete[] otherMarkers;
+    delete[] rigidBodies;
+  }
+
+  MarkerSet *markerSets;
+  Marker *otherMarkers;
+  RigidBody *rigidBodies;
+  // SkeletonData *skeletons;
+  // LabelMarker *labelMarkers;
+  // ForcePlateData *forcePlates;
+  // DeviceData *devices;
+
+  uint32_t numMarkerSets;
+  uint32_t numOtherMarkers;
+  uint32_t numRigidBodies;
+  // int numSkeletons;
+  // int numLabelMarkers;
+  // int numForcePlates;
+  // int numDevices;
+
+  // unsigned int timeCode;                              // SMPTE timecode (if available)
+  // unsigned int timeCodeSubframe;                      // timecode sub-frame data
+  // double fTimestamp;                              // timestamp since software start ( software timestamp )
+  // uint64_t cameraMidExposureTimestamp;            // Given in host's high resolution ticks
+  // uint64_t cameraDataReceivedTimestamp;           // Given in host's high resolution ticks
+  // uint64_t transmitTimestamp;                     // Given in host's high resolution ticks
+  // int16_t params;                                     // host defined parameters
+  //
+  // int latency;
+};
+
+/// \brief Parser for a NatNet data frame packet
+class MoCapDataFormat {
+public:
+  MoCapDataFormat(const char *packet, uint16_t length);
+  ~MoCapDataFormat();
+
+  /// \brief Parses a NatNet data frame packet as it is streamed by the Arena software according to the descriptions in the NatNet SDK v1.4. Should support up to 3.0 now
+  void parse();
+
+  const char *packet;
+  uint16_t length;
+
+  struct {
+    int32_t major;
+    int32_t minor;
+  } nnVer;
+
+  uint32_t frameNumber;
+  ModelFrame model;
+
+private:
+  void seek(size_t count);
+  template<typename T> void read_and_seek(T& target) {
+    target = *((T*) packet);
+    seek(sizeof(T));
+  }
+};
+
+
+#endif  /*__MOCAP_DATAPACKETS_H__*/
 
 // // Labeled markers
 // class LabelMarker
@@ -76,40 +207,6 @@ class Marker
 //     float residual;                     // marker error residual, in mm/ray
 // };
 
-class Pose
-{
-  public:
-    struct __attribute__ ((__packed__)) {
-      float x;
-      float y;
-      float z;
-    } position;
-    struct __attribute__ ((__packed__)) {
-      float x;
-      float y;
-      float z;
-      float w;
-    } orientation;
-};
-
-/// \brief Data object holding information about a single rigid body within a mocap skeleton
-class RigidBody
-{
-  public:
-    RigidBody();
-    ~RigidBody();
-
-    uint32_t ID;
-
-    Pose pose;
-
-    uint32_t NumberOfMarkers;
-    Marker *marker;
-
-    const geometry_msgs::PoseStamped get_ros_pose(bool newCoordinates);
-    bool has_data();
-};
-
 // /// \brief Data object holding information about a mocap skeleton
 // class SkeletonData
 // {
@@ -122,29 +219,6 @@ class RigidBody
 //     int numRigidBodies;
 //     RigidBody *rigidBodies;
 // };
-
-/// \brief Data object describing a single tracked model
-class ModelDescription
-{
-  public:
-    ModelDescription();
-    ~ModelDescription();
-
-    string name;
-    uint32_t numMarkers;
-    string *markerNames;
-};
-
-class MarkerSet
-{
-  public:
-    MarkerSet() : numMarkers(0), markers(0) {}
-    ~MarkerSet() { delete[] markers; }
-    char name[256];
-    uint32_t numMarkers;
-    Marker *markers;
-};
-
 // // MarkerSet Definition
 // class MarkerSetDescription
 // {
@@ -153,7 +227,6 @@ class MarkerSet
 //     int nMarkers;                       // # of markers in MarkerSet
 //     char** szMarkerNames;                   // array of marker names
 // };
-
 
 // class AnalogChannelData
 // {
@@ -180,69 +253,3 @@ class MarkerSet
 //     AnalogChannelData channelsData[MAX_ANALOG_CHANNELS];// Channel (signal) data (e.g. ai0, ai1, ai2)
 //     int16_t params;                                     // Host defined flags
 // };
-
-/// \brief Data object holding poses of a tracked model's components
-class ModelFrame
-{
-  public:
-    ModelFrame();
-    ~ModelFrame();
-
-    MarkerSet *markerSets;
-    Marker *otherMarkers;
-    RigidBody *rigidBodies;
-    // SkeletonData *skeletons;
-    // LabelMarker *labelMarkers;
-    // ForcePlateData *forcePlates;
-    // DeviceData *devices;
-
-    uint32_t numMarkerSets;
-    uint32_t numOtherMarkers;
-    uint32_t numRigidBodies;
-    // int numSkeletons;
-    // int numLabelMarkers;
-    // int numForcePlates;
-    // int numDevices;
-
-    // unsigned int timeCode;                              // SMPTE timecode (if available)
-    // unsigned int timeCodeSubframe;                      // timecode sub-frame data
-    // double fTimestamp;                              // timestamp since software start ( software timestamp )
-    // uint64_t cameraMidExposureTimestamp;            // Given in host's high resolution ticks
-    // uint64_t cameraDataReceivedTimestamp;           // Given in host's high resolution ticks
-    // uint64_t transmitTimestamp;                     // Given in host's high resolution ticks
-    // int16_t params;                                     // host defined parameters
-    //
-    // int latency;
-};
-
-/// \brief Parser for a NatNet data frame packet
-class MoCapDataFormat
-{
-  public:
-    MoCapDataFormat(const char *packet, unsigned short length);
-    ~MoCapDataFormat();
-
-    /// \brief Parses a NatNet data frame packet as it is streamed by the Arena software according to the descriptions in the NatNet SDK v1.4. Should support up to 3.0 now
-    void parse ();
-
-    const char *packet;
-    uint16_t length;
-
-    struct {
-      int32_t major;
-      int32_t minor;
-    } nnVer;
-
-    uint32_t frameNumber;
-    ModelFrame model;
-
-  private:
-    void seek(size_t count);
-    template <typename T> void read_and_seek(T& target)
-    {
-        target = *((T*) packet);
-        seek(sizeof(T));
-    }
-};
-
-#endif  /*__MOCAP_DATAPACKETS_H__*/

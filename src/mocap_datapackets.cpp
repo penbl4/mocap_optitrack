@@ -7,22 +7,10 @@
 #include <ros/console.h>
 using namespace std;
 
-RigidBody::RigidBody()
-  : NumberOfMarkers(0), ID(0), marker(0)
-{
-}
-
-RigidBody::~RigidBody()
-{
-  delete[] marker;
-}
-
-const geometry_msgs::PoseStamped RigidBody::get_ros_pose(bool newCoordinates)
-{
+const geometry_msgs::PoseStamped RigidBody::get_ros_pose(bool newCoordinates) {
   geometry_msgs::PoseStamped ros_pose;
   ros_pose.header.stamp = ros::Time::now();
-  if (newCoordinates)
-  {
+  if (newCoordinates) {
     // Motive 1.7+ coordinate system
     ros_pose.pose.position.x = -pose.position.x;
     ros_pose.pose.position.y = pose.position.z;
@@ -33,8 +21,7 @@ const geometry_msgs::PoseStamped RigidBody::get_ros_pose(bool newCoordinates)
     ros_pose.pose.orientation.z = pose.orientation.y;
     ros_pose.pose.orientation.w = pose.orientation.w;
   }
-  else
-  {
+  else {
     // y & z axes are swapped in the Optitrack coordinate system
     ros_pose.pose.position.x = pose.position.x;
     ros_pose.pose.position.y = -pose.position.z;
@@ -48,10 +35,9 @@ const geometry_msgs::PoseStamped RigidBody::get_ros_pose(bool newCoordinates)
   return ros_pose;
 }
 
-bool RigidBody::has_data()
-{
-    static const char zero[sizeof(pose)] = { 0 };
-    return memcmp(zero, (char*) &pose, sizeof(pose));
+bool RigidBody::has_data() {
+  static const char zero[sizeof(pose)] = { 0 };
+  return memcmp(zero, (char*) &pose, sizeof(pose));
 }
 
 // SkeletonData::SkeletonData()
@@ -64,77 +50,44 @@ bool RigidBody::has_data()
 //   delete[] rigidBodies;
 // }
 
-ModelDescription::ModelDescription()
-  : numMarkers(0), markerNames(0)
-{
+MoCapDataFormat::MoCapDataFormat(const char *packet, unsigned short length) :
+    packet(packet), length(length), frameNumber(0) {
 }
 
-ModelDescription::~ModelDescription()
-{
-  delete[] markerNames;
+MoCapDataFormat::~MoCapDataFormat() {
 }
 
-ModelFrame::ModelFrame()
-  // : markerSets(0), otherMarkers(0), rigidBodies(0), skeletons(0), labelMarkers(0),
-  //   numMarkerSets(0), numOtherMarkers(0), numRigidBodies(0), numSkeletons(0), numLabelMarkers(0),
-  //   latency(0.0)
-  : markerSets(0), otherMarkers(0), rigidBodies(0), numMarkerSets(0), numOtherMarkers(0), numRigidBodies(0)
-{
-}
-
-ModelFrame::~ModelFrame()
-{
-  delete[] markerSets;
-  delete[] otherMarkers;
-  delete[] rigidBodies;
-  // delete[] skeletons;
-  // delete[] labelMarkers;
-}
-
-MoCapDataFormat::MoCapDataFormat(const char *packet, unsigned short length)
-  : packet(packet), length(length), frameNumber(0)
-{
-}
-
-MoCapDataFormat::~MoCapDataFormat()
-{
-}
-
-void MoCapDataFormat::seek(size_t count)
-{
+void MoCapDataFormat::seek(size_t count) {
   packet += count;
   length -= count;
 }
 
-void MoCapDataFormat::parse()
-{
-  seek(4); // skip 4-bytes. message ID and packet size.
+void MoCapDataFormat::parse() {
+  seek(2 * sizeof(uint16_t)); // skip 4-bytes, message ID (2b) and packet size (2b).
 
   // parse frame number
-  read_and_seek(frameNumber);
+  read_and_seek(frameNumber); // 4 bytes
   ROS_DEBUG("Frame number: %d", frameNumber);
 
-  // count number of packetsets
-  read_and_seek(model.numMarkerSets);
-  model.markerSets = new MarkerSet[model.numMarkerSets];
+  // count number of data sets (markersets, rigidbodies, etc)
+  read_and_seek(model.numMarkerSets); // 4 bytes
   ROS_DEBUG("Number of marker sets: %d", model.numMarkerSets);
 
-  for (int i = 0; i < model.numMarkerSets; i++)
-  {
-    strcpy(model.markerSets[i].name, packet);
-    seek(strlen(model.markerSets[i].name) + 1);
+  model.markerSets = new MarkerSet[model.numMarkerSets];
+  for (int i = 0; i < model.numMarkerSets; i++) {
+    strcpy(model.markerSets[i].szName, packet);
+    seek(strlen(model.markerSets[i].szName) + 1);
 
-    ROS_DEBUG("Parsing model named: %s", model.markerSets[i].name);
+    ROS_DEBUG("Parsing model named: %s", model.markerSets[i].szName);
 
     // read number of markers that belong to the model
-    read_and_seek(model.markerSets[i].numMarkers);
+    read_and_seek(model.markerSets[i].numMarkers); // 4 bytes
     ROS_DEBUG("Number of markers in set: %d", model.markerSets[i].numMarkers);
-    model.markerSets[i].markers = new Marker[model.markerSets[i].numMarkers];
 
-    for (int k = 0; k < model.markerSets[i].numMarkers; k++)
-    {
+    model.markerSets[i].markers = new Marker[model.markerSets[i].numMarkers];
+    for (int k = 0; k < model.markerSets[i].numMarkers; k++) {
       // read marker positions
-      read_and_seek(model.markerSets[i].markers[k]);
+      read_and_seek(model.markerSets[i].markers[k]); // 12 bytes
       float x = model.markerSets[i].markers[k].positionX;
       float y = model.markerSets[i].markers[k].positionY;
       float z = model.markerSets[i].markers[k].positionZ;
@@ -142,76 +95,46 @@ void MoCapDataFormat::parse()
     }
   }
 
-  // read number of 'other' markers. Unidentified markers. (cf. NatNet specs)
-  read_and_seek(model.numOtherMarkers);
-  model.otherMarkers = new Marker[model.numOtherMarkers];
+  // read number of unlabeled/other markers. Deprecated??
+  read_and_seek(model.numOtherMarkers); // 4 bytes
   ROS_DEBUG("Number of markers not in sets: %d", model.numOtherMarkers);
 
-  for (int l = 0; l < model.numOtherMarkers; l++)
-  {
-    // read positions of 'other' markers
-    read_and_seek(model.otherMarkers[l]);
+  model.otherMarkers = new Marker[model.numOtherMarkers];
+  for (int i = 0; i < model.numOtherMarkers; i++) {
+    // read 'other' marker positions
+    read_and_seek(model.otherMarkers[i]); // 12 bytes
   }
 
   // read number of rigid bodies of the model
-  read_and_seek(model.numRigidBodies);
+  read_and_seek(model.numRigidBodies); // 4 bytes
   ROS_DEBUG("Number of rigid bodies: %d", model.numRigidBodies);
 
   model.rigidBodies = new RigidBody[model.numRigidBodies];
-  for (int m = 0; m < model.numRigidBodies; m++)
-  {
+  for (int i = 0; i < model.numRigidBodies; i++) {
     // read id, position and orientation of each rigid body
-    read_and_seek(model.rigidBodies[m].ID);
-    read_and_seek(model.rigidBodies[m].pose);
+    read_and_seek(model.rigidBodies[i].ID); // 4 bytes
+    read_and_seek(model.rigidBodies[i].pose); // 28 bytes
 
-    ROS_DEBUG("Rigid body ID: %d", model.rigidBodies[m].ID);
+    ROS_DEBUG("Rigid body ID: %d", model.rigidBodies[i].ID);
     ROS_DEBUG("pos: [%3.2f,%3.2f,%3.2f], ori: [%3.2f,%3.2f,%3.2f,%3.2f]",
-        model.rigidBodies[m].pose.position.x,
-        model.rigidBodies[m].pose.position.y,
-        model.rigidBodies[m].pose.position.z,
-        model.rigidBodies[m].pose.orientation.x,
-        model.rigidBodies[m].pose.orientation.y,
-        model.rigidBodies[m].pose.orientation.z,
-        model.rigidBodies[m].pose.orientation.w);
+	model.rigidBodies[i].pose.position.x,
+	model.rigidBodies[i].pose.position.y,
+	model.rigidBodies[i].pose.position.z,
+	model.rigidBodies[i].pose.orientation.x,
+	model.rigidBodies[i].pose.orientation.y,
+	model.rigidBodies[i].pose.orientation.z,
+	model.rigidBodies[i].pose.orientation.w);
 
-//    // After Version 3.0 Marker data is in desription
-//    if (NatNetVersion < Version("3.0"))
-//    {
-//      // get number of markers per rigid body
-//      read_and_seek(model.rigidBodies[m].NumberOfMarkers);
-//
-//      ROS_DEBUG("Number of rigid body markers: %d", model.rigidBodies[m].NumberOfMarkers);
-//
-//      if (model.rigidBodies[m].NumberOfMarkers > 0)
-//      {
-//        model.rigidBodies[m].marker = new Marker [model.rigidBodies[m].NumberOfMarkers];
-//
-//        size_t byte_count = model.rigidBodies[m].NumberOfMarkers * sizeof(Marker);
-//        memcpy(model.rigidBodies[m].marker, packet, byte_count);
-//        seek(byte_count);
-//
-//        // skip marker IDs
-//        byte_count = model.rigidBodies[m].NumberOfMarkers * sizeof(int);
-//        seek(byte_count);
-//
-//        // skip marker sizes
-//        byte_count = model.rigidBodies[m].NumberOfMarkers * sizeof(float);
-//        seek(byte_count);
-//      }
-//    }
-
-    // Skip padding inserted by the server
-    seek(sizeof(int32_t));
+//    // Skip padding inserted by the server
+//    seek(sizeof(int32_t)); // 4 bytes
 
     // skip mean marker error, version > 2.0
-    seek(sizeof(float));
+    seek(sizeof(float)); // 4 bytes
 
-    // version 2.6 or later.
-    if (nnVer.major > 2 && nnVer.minor > 6)
-    {
-      seek(sizeof(short));
+    // skip params, version > 2.6
+    if (nnVer.major > 2 && nnVer.minor > 6) {
+      seek(sizeof(uint16_t)); // 2 bytes
     }
-
   }
 
   // // skeletons, version 2.1 and later

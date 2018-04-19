@@ -75,12 +75,13 @@ typedef struct {
   uint16_t iMessage;                // message ID (e.g. NAT_FRAMEOFDATA)
   uint16_t nDataBytes;              // Num bytes in payload
   union {
-    uint8_t cData[MAX_PACKETSIZE];
-    char szData[MAX_PACKETSIZE];
-    uint32_t lData[MAX_PACKETSIZE / sizeof(uint32_t)];
-    float fData[MAX_PACKETSIZE / sizeof(float)];
-    sSender Sender;
-    sSender_Server SenderServer;
+    uint8_t 	cData[MAX_PACKETSIZE];
+    char 	szData[MAX_PACKETSIZE];
+    uint32_t 	lData[MAX_PACKETSIZE / sizeof(uint32_t)];
+    float 	fData[MAX_PACKETSIZE / sizeof(float)];
+
+    sSender 		Sender;
+    sSender_Server 	SenderServer;
   } Data;                                 // Payload
 } sPacket;
 
@@ -125,7 +126,7 @@ void processMocapData(const char** mocap_model,
 
       // Look for the beginning of a NatNet package
       if (header == NAT_FRAMEOFDATA && version && 0 == 1) {
-	payload_len = *((unsigned short*) &buffer[2]);  // 2-bytes.
+	payload_len = PacketIn.nDataBytes;
 	MoCapDataFormat format(buffer, payload_len);
 	format.nnVer.major = nver[0];
 	format.nnVer.minor = nver[1];
