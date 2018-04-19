@@ -79,7 +79,6 @@ typedef struct {
     char 	szData[MAX_PACKETSIZE];
     uint32_t 	lData[MAX_PACKETSIZE / sizeof(uint32_t)];
     float 	fData[MAX_PACKETSIZE / sizeof(float)];
-
     sSender 		Sender;
     sSender_Server 	SenderServer;
   } Data;                                 // Payload
@@ -104,7 +103,7 @@ void processMocapData(const char** mocap_model,
   ROS_INFO("Start processMocapData");
 
   bool version = false;
-  uint32_t numBytes = 0;
+  int32_t numBytes = 0;
   sPacket PacketIn;
 
   while (ros::ok()) {
@@ -125,7 +124,7 @@ void processMocapData(const char** mocap_model,
       unsigned short header = *((unsigned short*) (&buffer[0])); // 2-bytes, ushort.
 
       // Look for the beginning of a NatNet package
-      if (header == NAT_FRAMEOFDATA && version && 0 == 1) {
+      if (header == NAT_FRAMEOFDATA && version) {
 	payload_len = PacketIn.nDataBytes;
 	MoCapDataFormat format(buffer, payload_len);
 	format.nnVer.major = nver[0];

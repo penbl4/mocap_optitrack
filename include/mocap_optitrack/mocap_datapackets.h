@@ -105,7 +105,7 @@ public:
 
   uint32_t ID;
 
-  uint32_t numRigidBodies;
+  int32_t numRigidBodies;
   RigidBody *rigidBodies;
 };
 
@@ -120,7 +120,7 @@ public:
   }
 
   string name;
-  uint32_t numMarkers;
+  int32_t numMarkers;
   string *markerNames;
 };
 
@@ -134,7 +134,7 @@ public:
   }
 
   char szName[256];
-  uint32_t numMarkers;
+  int32_t numMarkers;
   Marker *markers;
 };
 
@@ -160,10 +160,10 @@ public:
   // ForcePlateData *forcePlates;
   // DeviceData *devices;
 
-  uint32_t numMarkerSets;
-  uint32_t numOtherMarkers;
-  uint32_t numRigidBodies;
-  uint32_t numSkeletons;
+  int32_t numMarkerSets;
+  int32_t numOtherMarkers;
+  int32_t numRigidBodies;
+  int32_t numSkeletons;
   // int numLabelMarkers;
   // int numForcePlates;
   // int numDevices;
