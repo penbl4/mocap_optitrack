@@ -88,13 +88,13 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////////
 
 void processMocapData(const char** mocap_model,
-    RigidBodyMap& published_rigid_bodies, const std::string& multicast_ip) {
+  RigidBodyMap& published_rigid_bodies, const std::string& multicast_ip) {
   UdpMulticastSocket multicast_client_socket( LOCAL_PORT, multicast_ip);
 
-  unsigned short payload_len;
-  int numberOfPackets = 0;
-  int nver[4] = { 0, 0, 0, 0 }; // natnet version
-  int sver[4] = { 0, 0, 0, 0 }; // server version
+  uint16_t payload_len;
+  uint32_t numberOfPackets = 0;
+  int32_t nver[4] = { 0, 0, 0, 0 }; // natnet version
+  int32_t sver[4] = { 0, 0, 0, 0 }; // server version
 
   sPacket PacketOut;
   PacketOut.iMessage = NAT_PING;
@@ -103,7 +103,7 @@ void processMocapData(const char** mocap_model,
   ROS_INFO("Start processMocapData");
 
   bool version = false;
-  int numBytes = 0;
+  uint32_t numBytes = 0;
   sPacket PacketIn;
 
   while (ros::ok()) {
@@ -127,14 +127,15 @@ void processMocapData(const char** mocap_model,
       if (header == NAT_FRAMEOFDATA && version && 0 == 1) {
 	payload_len = *((unsigned short*) &buffer[2]);  // 2-bytes.
 	MoCapDataFormat format(buffer, payload_len);
-	format.setVersion(nver, sver);
+	format.nnVer.major = nver[0];
+	format.nnVer.minor = nver[1];
 	format.parse();
 	packetread = true;
 	numberOfPackets++;
 
 	if (format.model.numRigidBodies > 0) {
 	  for (int i = 0; i < format.model.numRigidBodies; i++) {
-	    int ID = format.model.rigidBodies[i].ID;
+	    uint32_t ID = format.model.rigidBodies[i].ID;
 	    RigidBodyMap::iterator item = published_rigid_bodies.find(ID);
 
 	    if (item != published_rigid_bodies.end()) {

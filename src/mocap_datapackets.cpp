@@ -91,74 +91,6 @@ ModelFrame::~ModelFrame()
   // delete[] labelMarkers;
 }
 
-Version::Version()
-  : v_major(0), v_minor(0), v_revision(0), v_build(0)
-{
-}
-
-Version::Version(int major, int minor, int revision, int build)
-  : v_major(major), v_minor(minor), v_revision(revision), v_build(build)
-{
-  std::ostringstream ostr;
-  ostr << v_major << "." << v_minor << "." << v_revision << "." << v_build;
-  v_string  = ostr.str();
-}
-
-Version::Version(const std::string& version)
-  : v_string(version)
-{
-  std::sscanf(version.c_str(), "%d.%d.%d.%d", &v_major, &v_minor, &v_revision, &v_build);
-}
-
-Version::~Version()
-{
-}
-void Version::setVersion(int major, int minor, int revision, int build)
-{
-  v_major = major;
-  v_minor = minor;
-  v_revision = revision;
-  v_build = build;
-
-}
-
-const std::string& Version::getVersionString()
-{
-  return this->v_string;
-}
-
-bool Version::operator > (const Version& comparison)
-{
-  if (v_major > comparison.v_major)
-    return true;
-  if (v_minor > comparison.v_minor)
-    return true;
-  if (v_revision > comparison.v_revision)
-    return true;
-  if (v_build > comparison.v_build)
-    return true;
-  return false;
-}
-bool Version::operator < (const Version& comparison)
-{
-  if (v_major < comparison.v_major)
-    return true;
-  if (v_minor < comparison.v_minor)
-    return true;
-  if (v_revision < comparison.v_revision)
-    return true;
-  if (v_build < comparison.v_build)
-    return true;
-  return false;
-}
-bool Version::operator == (const Version& comparison)
-{
-  return v_major == comparison.v_major
-      && v_minor == comparison.v_minor
-      && v_revision == comparison.v_revision
-      && v_build == comparison.v_build;
-}
-
 MoCapDataFormat::MoCapDataFormat(const char *packet, unsigned short length)
   : packet(packet), length(length), frameNumber(0)
 {
@@ -269,13 +201,13 @@ void MoCapDataFormat::parse()
 //    }
 
     // Skip padding inserted by the server
-    seek(sizeof(int));
+    seek(sizeof(int32_t));
 
     // skip mean marker error, version > 2.0
     seek(sizeof(float));
 
-    // 2.6 or later.
-    if (NatNetVersion > Version("2.6"))
+    // version 2.6 or later.
+    if (nnVer.major > 2 && nnVer.minor > 6)
     {
       seek(sizeof(short));
     }
